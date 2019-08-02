@@ -42,7 +42,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 		honeyflowConstraints = new GRBLinExpr();
 		CreateSequenceFormVariablesAndConstraints(0,null,null);
 	}
-	private GRBVar twoBinaryVarTinearization(GRBVar var1, GRBVar var2) throws GRBException {
+	private GRBVar twoBinaryVarTinearization(GRBLinExpr var1, GRBVar var2) throws GRBException {
 
 		GRBLinExpr lz1 =  new GRBLinExpr();
 		GRBLinExpr lz2 =  new GRBLinExpr();
@@ -50,9 +50,9 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 		GRBVar z = model.addVar(0, Utils.MAX_LIMIT_OF_HONEY_FLOW, 0, GRB.CONTINUOUS,   "z" + zCnt);
 
 		/* z-var1 <= 0 */
-		lz1.addTerm(1, z);
-		lz1.addTerm(-1, var1);
-		model.addConstr(lz1, GRB.LESS_EQUAL, 0, "TLZ1" + zCnt);
+		lz1.addTerm(-1, z);
+		lz1.add(var1);
+		model.addConstr(lz1, GRB.GREATER_EQUAL, 0, "TLZ1" + zCnt);
 		
 
 		/* z-var2 <= 0 */
@@ -62,16 +62,16 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 		
 
 		/*Z-Var1-Var2+1 <= 0*/
-		lz3.addTerm(1, z);
-		lz3.addTerm(-1, var1);
-		lz3.addTerm(-1, var2);
-		model.addConstr(lz3, GRB.LESS_EQUAL, -1, "TLZ3" +zCnt);
+		lz3.addTerm(-1, z);
+		lz3.add(var1);
+		lz3.addTerm(1, var2);
+		model.addConstr(lz3, GRB.GREATER_EQUAL, 1, "TLZ3" +zCnt);
 		
 		return z;
 		
 		
 	}
-	private void CreateSequenceFormVariablesAndConstraints(int currentNodeId, GRBLinExpr parentVariable,
+	private void CreateSequenceFormVariablesAndConstraints(int currentNodeId, GRBLinExpr[] parentVariable,
 			GRBVar childVariable) throws GRBException {
 		Node node = game.getNodeById(currentNodeId);
 		if (node.isLeaf()) {
@@ -85,18 +85,20 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 
 		for (Action action : node.getActions()) {
 			if (node.getPlayer() == 1) {
-				GRBLinExpr sumOfBinaryVar = new GRBLinExpr();
+				GRBLinExpr[] binaryVars = new GRBLinExpr[Utils.MAX_LIMIT_OF_HONEY_FLOW];
 				GRBLinExpr sum = new GRBLinExpr();
 				for (int i = 0; i <= Utils.MAX_LIMIT_OF_HONEY_FLOW; i++) {
 					GRBVar v = model.addVar(0, 1, 0, GRB.BINARY,
 							"node:" + node.getNodeId() + "  action:" + action.getName());
-					sumOfBinaryVar.addTerm(i, v);
+					GRBLinExpr bVar = new GRBLinExpr();
+					bVar.addTerm(i, v);
+					binaryVars[i] = bVar;
 					sum.addTerm(1,v);
 
 				}
-				honeyflowConstraints.add(sumOfBinaryVar);
+				
 				model.addConstr(sum, GRB.EQUAL, 1, "P1" + node.getNodeId());
-				CreateSequenceFormVariablesAndConstraints(action.getChildId(), sumOfBinaryVar, childVariable);
+				CreateSequenceFormVariablesAndConstraints(action.getChildId(), binaryVars, childVariable);
 
 			} else if (node.getPlayer() == 2) {
 				GRBVar v = model.addVar(0, 1, 0, GRB.BINARY,
