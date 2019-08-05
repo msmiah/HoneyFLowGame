@@ -8,5 +8,6 @@ public class ExperimentsGame {
 	   
 	   Game g = new Game();
 	   ApproximationSolver solver = new ApproximationSolver(g);
+	   solver.solveGame();
    }
 }

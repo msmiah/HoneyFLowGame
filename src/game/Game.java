@@ -49,7 +49,7 @@ public class Game {
 		private int informationSet;
 		private Action[] actions;
 		private double value = 0;
-		private boolean isRealAssest = true;
+		private boolean isRealAssest = false;
 
 		public Node(int nodeId, String name, int player) {
 			this.nodeId = nodeId;
@@ -118,6 +118,7 @@ public class Game {
 		dNode.actions = new Action[Utils.TOTAL_DEFENDER_ACTION_NO];
 		for (int i = 0; i < dNode.actions.length; i++) {
 			Action action = new Action();
+			dNode.isRealAssest = isRealHost[i];
 			action.name = defenderActionName[i];
 			createAttackerNode(action, i);
 			dNode.actions[i] = action;
