@@ -49,7 +49,7 @@ public class Game {
 		private int informationSet;
 		private Action[] actions;
 		private double value = 0;
-		private boolean isRealAssest = false;
+		private boolean isRealAssest;
 
 		public Node(int nodeId, String name, int player) {
 			this.nodeId = nodeId;
@@ -101,11 +101,11 @@ public class Game {
 	}
 
 	private void init() {
-		valueOfHosts[0] = 100; // no-vulnerability (H1)
-		valueOfHosts[1] = 50; // host with vulnerability type V1
-		valueOfHosts[2] = 30; // host with vulnerability type v2
-		valueOfHosts[3] = 10; // non-existing host sending honey flow with V1 vulnerability
-		valueOfHosts[4] = 5; // non-existing host sending honey flow with V2 vulnerability
+		valueOfHosts[0] = 0; // no-vulnerability (H1)
+		valueOfHosts[1] = 4; // host with vulnerability type V1
+		valueOfHosts[2] = 5; // host with vulnerability type v2
+		valueOfHosts[3] = 1; // non-existing host sending honey flow with V1 vulnerability
+		valueOfHosts[4] = 1; // non-existing host sending honey flow with V2 vulnerability
 		createDefenderNode();
 
 	}
@@ -118,7 +118,6 @@ public class Game {
 		dNode.actions = new Action[Utils.TOTAL_DEFENDER_ACTION_NO];
 		for (int i = 0; i < dNode.actions.length; i++) {
 			Action action = new Action();
-			dNode.isRealAssest = isRealHost[i];
 			action.name = defenderActionName[i];
 			createAttackerNode(action, i);
 			dNode.actions[i] = action;
@@ -130,7 +129,8 @@ public class Game {
 
 		Node aNode = new Node(++nodeCount, "A", player2);
 		nodes[nodeCount] = aNode;
-		parentAction.childId = nodeCount;
+		parentAction.childId = nodeCount;			
+		aNode.isRealAssest = isRealHost[utilityIndex];
 		aNode.actions = new Action[Utils.TOTAL_ATTACKER_ACTION_NO];
 		for (int i = 0; i < aNode.actions.length; i++) {
 			Action action = new Action();
@@ -148,7 +148,7 @@ public class Game {
 		parentAction.childId = nodeCount;
 		leafNode.nodeId = nodeCount;
 		leafNode.actions = null;
-		if (actionType == Utils.ATTACK_AS_NO_ATTACK)
+		if (actionType == Utils.ATTACK_AS_NO_ATTACK &&  isRealHost[index] == true)
 			leafNode.value = 0;
 		else if ((actionType != Utils.ATTACK_AS_NO_ATTACK && isRealHost[index] == false)
 				|| (actionType != vulerabilityOfHost[index]))

@@ -23,7 +23,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 	GRBLinExpr honeyflowConstraints;
 	GRBLinExpr p2ActionConstraints;
 	HashMap<String, GRBLinExpr> strategyVarsByAction;
-	HashMap<String, GRBVar> p2strategyVarsByAction;
+	HashMap<String, GRBLinExpr> p2strategyVarsByAction;
 	HashMap<String, GRBLinExpr>[] zVarsByAction;
 	private int zCnt;
 
@@ -55,7 +55,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 			this.zVarsByAction[i] = new HashMap<String, GRBLinExpr>();
 		}
 		this.strategyVarsByAction = new HashMap<String, GRBLinExpr>();
-		this.p2strategyVarsByAction = new HashMap<String, GRBVar>();
+		this.p2strategyVarsByAction = new HashMap<String, GRBLinExpr>();
 		CreateVariablesAndExpressions(0, null, null, -1, null,false);
 		setConstraints();
 		SetObjective();
@@ -66,7 +66,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 		GRBLinExpr lz1 = new GRBLinExpr();
 		GRBLinExpr lz2 = new GRBLinExpr();
 		GRBLinExpr lz3 = new GRBLinExpr();
-		GRBVar z = model.addVar(0, Utils.MAX_LIMIT_OF_HONEY_FLOW, 0, GRB.CONTINUOUS, "z" + zCnt);
+		GRBVar z = model.addVar(0, Utils.MAX_LIMIT_OF_HONEY_FLOW, 0, GRB.INTEGER, "z" + zCnt);
 
 		/* z-var1 <= 0 */
 		lz1.addTerm(-1, z);
@@ -103,10 +103,16 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 				objective.multAdd(value, sumZ);
 				brConstraints.multAdd(-value, sumZ);
 				sumP2Action.multAdd(-value, sumZ);
+				p2ActionConstraints.add(sumZ);
+				p2strategyVarsByAction.put("node : " + childID + " action: " + childAction, sumZ);
 			} else {
 				objective.addTerm(value, childVariable);
 				brConstraints.addTerm(-value, childVariable);
 				sumP2Action.addTerm(-value, childVariable);
+				p2ActionConstraints.addTerm(1, childVariable);
+				GRBLinExpr tmp = new GRBLinExpr();
+				tmp.addTerm(1,childVariable);
+				p2strategyVarsByAction.put("node : " + childID + " action: " + childAction, tmp);
 				
 			}
 			if (childAction.equals("No-attack"))
@@ -116,15 +122,13 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 			else
 				zVarsByAction[2].put(childID + childAction, sumP2Action);
 			// primalConstraints.put(node.getInformationSet(),
-			// System.out.println(value+ ": par :" +parentVariable + " : child" +
-			// childVariable);
+			 //System.out.println(childAction + " " + value);
 			return;
 		}
 
 		for (Action action : node.getActions()) {
 			if (node.getPlayer() == 1) {
-				// System.out.println("Sum = " + sum);
-				if (node.getIsReal() == false) {
+				if (game.getNodeById(action.getChildId()).getIsReal() == false) {
 					GRBLinExpr[] binaryVars = new GRBLinExpr[Utils.MAX_LIMIT_OF_HONEY_FLOW + 1];
 					GRBLinExpr sum = new GRBLinExpr();
 					for (int i = 0; i <= Utils.MAX_LIMIT_OF_HONEY_FLOW; i++) {
@@ -136,18 +140,23 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 						sum.add(bVar);
 
 					}
+					//System.out.println("Action : " + action.getName());
 					honeyflowConstraints.add(sum);
 					strategyVarsByAction.put("node : " + node.getNodeId() + "action: " + action.getName(), sum);
 					CreateVariablesAndExpressions(action.getChildId(), binaryVars, childVariable, childID, childAction, node.getIsReal());
-				}else
-
-			    	CreateVariablesAndExpressions(action.getChildId(), null, childVariable, childID, childAction, node.getIsReal());
+				}else {
+					GRBLinExpr[] binaryVars = new GRBLinExpr[1];
+					GRBLinExpr bVar = new GRBLinExpr();
+					bVar.addConstant(1);
+					binaryVars[0] = bVar;
+			    	CreateVariablesAndExpressions(action.getChildId(), binaryVars, childVariable, childID, childAction, true);
+				}
 
 			} else if (node.getPlayer() == 2) {
 				GRBVar v = model.addVar(0, 1, 0, GRB.BINARY,
 						"node:" + node.getNodeId() + "  action:" + action.getName());
-				p2ActionConstraints.addTerm(1, v);
-				p2strategyVarsByAction.put("node : " + node.getNodeId() + "action: " + action.getName(), v);
+				//p2ActionConstraints.addTerm(1, v);
+				//p2strategyVarsByAction.put("node : " + node.getNodeId() + "action: " + action.getName(), v);
 				CreateVariablesAndExpressions(action.getChildId(), parentVariable, v, node.getNodeId(),
 						action.getName(), isReal);
 			}
@@ -157,7 +166,8 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 	private void setConstraints() throws GRBException {
 		model.addConstr(honeyflowConstraints, GRB.LESS_EQUAL, Utils.MAX_LIMIT_OF_HONEY_FLOW,
 				"P1-Honeyflow-Constraints");
-		//model.addConstr(p2ActionConstraints, GRB.EQUAL, 1, "P2-Action-Constraints");
+		//System.out.println("Size " + p2ActionConstraints.size());
+		model.addConstr(p2ActionConstraints, GRB.EQUAL, 1, "P2-Action-Constraints");
 		for (int i = 0; i < Utils.TOTAL_ATTACKER_ACTION_NO; i++) {
 			Set entrySet = zVarsByAction[i].entrySet();
 			Iterator it = entrySet.iterator();
@@ -166,6 +176,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 				Map.Entry pair = (Map.Entry) it.next();
 				// System.out.println("Key : " + pair.getValue());
 				lhs.add((GRBLinExpr) pair.getValue());
+				//it.remove();
 			}
 			if (null != lhs) {
 				model.addConstr(lhs, GRB.GREATER_EQUAL, brConstraints, "P2-Action-Constraints-Br");
@@ -200,7 +211,33 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 
 	@Override
 	public void printStrategyVarsAndGameValue() {
-		// TODO Auto-generated method stub
+		
+		System.out.println(".........................P1 Strategy...................");
+		Set entrySet = strategyVarsByAction.entrySet();
+		Iterator it = entrySet.iterator();
+		while (it.hasNext()) {
+			Map.Entry pair = (Map.Entry) it.next();
+			GRBLinExpr v = (GRBLinExpr) pair.getValue();
+			try {
+				System.out.println(pair.getKey() + ": \t" + v.getValue());
+			} catch (GRBException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		System.out.println(".........................P2 Strategy...................");
+		Set entrySetP2 = p2strategyVarsByAction.entrySet();		
+		Iterator itt = entrySetP2.iterator();
+		while (itt.hasNext()) {
+			Map.Entry pair = (Map.Entry) itt.next();
+			GRBLinExpr v = (GRBLinExpr) pair.getValue();
+			try {
+				System.out.println(pair.getKey() + ": \t" + v.getValue());
+			} catch (GRBException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 
 	}
 

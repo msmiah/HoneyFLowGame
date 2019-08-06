@@ -19,6 +19,6 @@ public class Utils {
 	public static final int NORMAL_FLOW = 0;
 	public static final int HONEY_FLOW_VULNERABILITY_TYPE1 = 1;
 	public static final int  HONEY_FLOW_VULNERABILITY_TYPE2 = 2;
-	public static final int  MAX_LIMIT_OF_HONEY_FLOW = 10;
+	public static final int  MAX_LIMIT_OF_HONEY_FLOW = 1;
 
 }
