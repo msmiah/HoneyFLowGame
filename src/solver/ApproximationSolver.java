@@ -24,6 +24,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 	GRBLinExpr p2ActionConstraints;
 	HashMap<String, GRBLinExpr> strategyVarsByAction;
 	HashMap<String, GRBLinExpr> p2strategyVarsByAction;
+	HashMap<String, GRBVar> p2strategy;
 	HashMap<String, GRBLinExpr>[] zVarsByAction;
 	private int zCnt;
 
@@ -56,6 +57,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 		}
 		this.strategyVarsByAction = new HashMap<String, GRBLinExpr>();
 		this.p2strategyVarsByAction = new HashMap<String, GRBLinExpr>();
+		this.p2strategy = new HashMap<String, GRBVar>();
 		CreateVariablesAndExpressions(0, null, null, -1, null,false);
 		setConstraints();
 		SetObjective();
@@ -92,26 +94,28 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 			int childID, String childAction, boolean isReal) throws GRBException {
 		Node node = game.getNodeById(currentNodeId);
 		if (node.isLeaf()) {
-			double value = node.getValue();
+			double p1value = node.getP1Value();
+			double p2value = node.getP2Value();
 			GRBLinExpr sumP2Action = new GRBLinExpr();
 			if (isReal == false) {
+				System.out.println("Size = " + parentVariable.length);
 				GRBLinExpr sumZ = new GRBLinExpr();
 				for (int i = 0; i < parentVariable.length; i++) {
 					GRBVar z = twoBinaryVarLinearization(parentVariable[i], childVariable);
 					sumZ.addTerm(1, z);
 				}
-				objective.multAdd(value, sumZ);
-				brConstraints.multAdd(-value, sumZ);
-				sumP2Action.multAdd(-value, sumZ);
+				objective.multAdd(p1value, sumZ);
+				brConstraints.multAdd(p2value, sumZ);
+				sumP2Action.multAdd(p2value, sumZ);
 				p2ActionConstraints.add(sumZ);
 				p2strategyVarsByAction.put("node : " + childID + " action: " + childAction, sumZ);
 			} else {
-				objective.addTerm(value, childVariable);
-				brConstraints.addTerm(-value, childVariable);
-				sumP2Action.addTerm(-value, childVariable);
-				p2ActionConstraints.addTerm(1, childVariable);
 				GRBLinExpr tmp = new GRBLinExpr();
 				tmp.addTerm(1,childVariable);
+				objective.multAdd(p1value, tmp);
+				brConstraints.multAdd(p2value, tmp);
+				sumP2Action.multAdd(p2value, tmp);
+				p2ActionConstraints.add(tmp);
 				p2strategyVarsByAction.put("node : " + childID + " action: " + childAction, tmp);
 				
 			}
@@ -156,7 +160,7 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 				GRBVar v = model.addVar(0, 1, 0, GRB.BINARY,
 						"node:" + node.getNodeId() + "  action:" + action.getName());
 				//p2ActionConstraints.addTerm(1, v);
-				//p2strategyVarsByAction.put("node : " + node.getNodeId() + "action: " + action.getName(), v);
+				p2strategy.put("node : " + node.getNodeId() + "action: " + action.getName(), v);
 				CreateVariablesAndExpressions(action.getChildId(), parentVariable, v, node.getNodeId(),
 						action.getName(), isReal);
 			}
@@ -189,8 +193,8 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 
 		model.setObjective(objective, GRB.MAXIMIZE);
 		System.out
-				.println("************************************************ Equation no 1 ***************************");
-		System.out.println("Objective Function : " + objective);
+				.println("************************************************ Objective ***************************");
+		System.out.println("Objective Function : " + objective );
 	}
 
 	@Override
@@ -243,7 +247,19 @@ public class ApproximationSolver extends ZeroSumGameSolver {
 
 	@Override
 	public void printGameValue() {
-		// TODO Auto-generated method stub
+		System.out.println(".........................P2 Strategy...................");
+		Set entrySetP2 = p2strategy.entrySet();		
+		Iterator itt = entrySetP2.iterator();
+		while (itt.hasNext()) {
+			Map.Entry pair = (Map.Entry) itt.next();
+			GRBVar v = (GRBVar) pair.getValue();
+			try {
+				System.out.println(v.get(GRB.StringAttr.VarName) + ": \t" +v.get(GRB.DoubleAttr.X) + "\n");
+			} catch (GRBException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 
 	}
 

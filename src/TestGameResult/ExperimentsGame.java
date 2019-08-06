@@ -10,5 +10,6 @@ public class ExperimentsGame {
 	   ApproximationSolver solver = new ApproximationSolver(g);
 	   solver.solveGame();
 	   solver.printStrategyVarsAndGameValue();
+	   //solver.printGameValue();
    }
 }

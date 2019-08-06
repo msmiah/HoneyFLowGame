@@ -48,7 +48,8 @@ public class Game {
 		private int player;
 		private int informationSet;
 		private Action[] actions;
-		private double value = 0;
+		private double p1Value = 0;
+		private double p2Value = 0;
 		private boolean isRealAssest;
 
 		public Node(int nodeId, String name, int player) {
@@ -78,8 +79,11 @@ public class Game {
 			return actions;
 		}
 
-		public double getValue() {
-			return value;
+		public double getP1Value() {
+			return p1Value;
+		}
+		public double getP2Value() {
+			return p2Value;
 		}
 
 		public boolean getIsReal() {
@@ -148,13 +152,24 @@ public class Game {
 		parentAction.childId = nodeCount;
 		leafNode.nodeId = nodeCount;
 		leafNode.actions = null;
-		if (actionType == Utils.ATTACK_AS_NO_ATTACK &&  isRealHost[index] == true)
-			leafNode.value = 0;
+		if (actionType == Utils.ATTACK_AS_NO_ATTACK &&  isRealHost[index] == true) {
+			leafNode.p1Value = 0;
+			leafNode.p2Value = 0;
+		}
+		else if (actionType == Utils.ATTACK_AS_NO_ATTACK &&  isRealHost[index] == false) {
+			leafNode.p1Value = -valueOfHosts[index];
+			leafNode.p2Value = 0;
+		}
 		else if ((actionType != Utils.ATTACK_AS_NO_ATTACK && isRealHost[index] == false)
-				|| (actionType != vulerabilityOfHost[index]))
-			leafNode.value = valueOfHosts[index]; 
+				|| (actionType != Utils.ATTACK_AS_NO_ATTACK && actionType != vulerabilityOfHost[index])) {
+			leafNode.p1Value = valueOfHosts[index]; 
+			leafNode.p2Value = - leafNode.p1Value;
+		}
 		else
-			leafNode.value = -valueOfHosts[index];
+		{
+			leafNode.p1Value = -valueOfHosts[index];
+			leafNode.p2Value = - leafNode.p1Value;
+		}
 
 	}
 
